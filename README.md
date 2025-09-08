@@ -188,8 +188,7 @@ local autoWinBrawlSwitch = autoBrawlsFolder:AddSwitch("Auto Win Brawls", functio
             equipPunch()
         end
     end)
-    
-    -- Auto Punch Loop - keeps punching
+       -- Auto Punch Loop - keeps punching
     task.spawn(function()
         while getgenv().autoWinBrawl and task.wait(0.1) do
             if not getgenv().autoWinBrawl then break end
@@ -202,98 +201,7 @@ local autoWinBrawlSwitch = autoBrawlsFolder:AddSwitch("Auto Win Brawls", functio
         end
     end)
     
-    -- Main Kill Loop - extremely resilient
-    task.spawn(function()
-        while getgenv().autoWinBrawl and task.wait(0.05) do
-            if not getgenv().autoWinBrawl then break end
-            
-            -- Only proceed if local player is ready and brawl is in progress
-            if isLocalPlayerReady() and game.ReplicatedStorage.brawlInProgress.Value then
-                local character = game.Players.LocalPlayer.Character
-                local leftHand = character:FindFirstChild("LeftHand")
-                local rightHand = character:FindFirstChild("RightHand")
-                
-                -- Process each player individually with error handling
-                for _, player in pairs(Players:GetPlayers()) do
-                    -- Skip if toggle was turned off mid-loop
-                    if not getgenv().autoWinBrawl then break end
-                    
-                    -- Use pcall for the entire player processing to prevent any errors from breaking the loop
-                    pcall(function()
-                        if isValidTarget(player) then
-                            local targetRoot = player.Character.HumanoidRootPart
-                            
-                            -- Try left hand
-                            if leftHand then
-                                safeTouchInterest(targetRoot, leftHand)
-                            end
-                            
-                            -- Try right hand
-                            if rightHand then
-                                safeTouchInterest(targetRoot, rightHand)
-                            end
-                        end
-                    end)
-                    
-                    -- Small delay between players to prevent overwhelming
-                    task.wait(0.01)
-                end
-            end
-        end
-    end)
-    
-    -- Recovery system - if the main loop somehow breaks, this will restart it
-    task.spawn(function()
-        local lastPlayerCount = 0
-        local stuckCounter = 0
-        
-        while getgenv().autoWinBrawl and task.wait(1) do
-            if not getgenv().autoWinBrawl then break end
-            
-            -- Check if we're processing players
-            local currentPlayerCount = #Players:GetPlayers()
-            
-            -- If player count changed but we're not seeing any activity, restart the kill loop
-            if currentPlayerCount ~= lastPlayerCount then
-                stuckCounter = 0
-                lastPlayerCount = currentPlayerCount
-            else
-                stuckCounter = stuckCounter + 1
-                
-                -- If we seem stuck for too long, force re-equip the tool
-                if stuckCounter > 5 then
-                    stuckCounter = 0
-                    
-                    -- Force re-equip
-                    pcall(function()
-                        local character = game.Players.LocalPlayer.Character
-                        if character and character:FindFirstChild("Punch") then
-                            character.Punch.Parent = game.Players.LocalPlayer.Backpack
-                            task.wait(0.1)
-                            equipPunch()
-                        else
-                            equipPunch()
-                        end
-                    end)
-                end
-            end
-        end
-    end)
-end)
-
--- Auto Join Brawl Only - FIXED to join only once and properly turn off
-autoBrawlsFolder:AddSwitch("Auto Brawls", function(bool)
-    getgenv().autoJoinBrawl = bool
-    
-    task.spawn(function()
-        while getgenv().autoJoinBrawl and task.wait(0.5) do
-            if not getgenv().autoJoinBrawl then break end
-            
-            if game.Players.LocalPlayer.PlayerGui.gameGui.brawlJoinLabel.Visible then
-                game.ReplicatedStorage.rEvents.brawlEvent:FireServer("joinBrawl")
-                -- Set the label to not visible to prevent multiple joins
-                game.Players.LocalPlayer.PlayerGui.gameGui.brawlJoinLabel.Visible = false
-            end
+             end
         end
     end)
 end)
@@ -507,66 +415,3 @@ opThingsFolder:AddSwitch("Anti Knockback", function(Value)
         end
     end
 end)
-
--- Anti AFK Button
-opThingsFolder:AddButton("Anti AFK", function()
-    -- Anti AFK implementation
-    local GC = getconnections or get_signal_cons
-    if GC then
-        for i, v in pairs(GC(game.Players.LocalPlayer.Idled)) do
-            if v["Disable"] then
-                v["Disable"](v)
-            elseif v["Disconnect"] then
-                v["Disconnect"](v)
-            end
-        end
-    else
-        -- Fallback method if getconnections isn't available
-        local VirtualUser = game:GetService("VirtualUser")
-        game:GetService("Players").LocalPlayer.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    end
-    
-    -- Notify user
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Anti AFK",
-        Text = "Anti AFK has been enabled!",
-        Duration = 5
-    })
-    
-    -- Additional periodic movement to prevent AFK
-    spawn(function()
-        while wait(30) do
-            local VirtualUser = game:GetService("VirtualUser")
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end
-    end)
-end)
-
-local autoRockFolder = farmPlusTab:AddFolder("Auto Rock")
-
--- Define the gettool function first
-function gettool()
-    for i, v in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
-        if v.Name == "Punch" and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-            game.Players.LocalPlayer.Character.Humanoid:EquipTool(v)
-        end
-    end
-    game:GetService("Players").LocalPlayer.muscleEvent:FireServer("punch", "leftHand")
-    game:GetService("Players").LocalPlayer.muscleEvent:FireServer("punch", "rightHand")
-end
-
--- Add all rock farming toggles to the Auto Rock folder
-autoRockFolder:AddSwitch("Tiny Rock", function(Value)
-    selectrock = "Tiny Island Rock"
-    getgenv().autoFarm = Value
-    
-    task.spawn(function()
-        while getgenv().autoFarm do
-            task.wait()
-            if not getgenv().autoFarm then break end
-            
-            if game:GetService("Players").LocalPlayer.Durability.Value >= 0 t
